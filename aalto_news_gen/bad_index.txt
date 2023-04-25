@@ -22,3 +22,7 @@ index.hu/szerzo/.*
 index.hu/.*/cimkek/
 index.hu/napirajz/.*
 index.hu/politika/belfold/2006/elkurtuk/videok/.*
+parlamentnilisty.cz/profily/.*
+parlamentnilisty.cz/profily\?p=.*
+parlamentnilisty.cz/galerie/.*
+parlamentnilisty.cz/tv/.*
