@@ -22,6 +22,15 @@ index.hu/szerzo/.*
 index.hu/.*/cimkek/
 index.hu/napirajz/.*
 index.hu/politika/belfold/2006/elkurtuk/videok/.*
+ac24.cz/.*/embed/.*
+ac24.cz/.*/mailto/.*
+ac24.cz/component/.*
+ac24.cz/rubrika/.*
+ac24.cz/v-puvodnim-zneni
+ac24.cz/tag/.*
+ac24.cz/uvod\?.*
+ac24.cz/.*/\?format=feed&type=rss
+ac24.cz/.*/index.php.*
 parlamentnilisty.cz/profily/.*
 parlamentnilisty.cz/profily\?p=.*
 parlamentnilisty.cz/galerie/.*
