@@ -23,7 +23,8 @@ class WarcIterator:
             html_header, html_text = record.payload.read().split(b'\r\n\r\n', maxsplit=1)
             ext = tldextract.extract(url)
             domain = f'{ext.domain}.{ext.suffix}'
-            try:
-                yield Page(url, domain, date, html_text.decode('utf-8'))
-            except:
-                yield Page(url, domain, date, html_text.decode('latin-1'))
+            if not self.bad_index.match(url):
+                try:
+                    yield Page(url, domain, date, html_text.decode('utf-8'))
+                except:
+                    yield Page(url, domain, date, html_text.decode('latin-1'))

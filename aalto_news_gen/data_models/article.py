@@ -9,7 +9,6 @@ from aalto_news_gen.serializers.datetime_serializer import DateTimeEncoder
 @dataclass
 class Article:
     uuid: str
-    lead: str
     article: str
     domain: str
     url: str
