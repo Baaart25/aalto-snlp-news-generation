@@ -11,25 +11,22 @@ from aalto_news_gen.utils.dateparser import DateParser
 
 class ParlamentnilistyScraper(ScraperBase):
     def get_article_text(self, url, soup) -> str:
-        # TODO modify these
-        article = soup.find('div', class_="text")
-
-        if not article:
-            article = soup.find('div', class_='post_text')
+        article = soup.find('section', class_="article-content")
 
         article_text = self.get_text(article, remove_img=True)
         assert_has_article(article_text, url)
         return article_text
 
     def get_date_of_creation(self, soup) -> Optional[datetime]:
-        # TODO modify these
-        date = soup.find('div', class_='date')
-        if not date:
-            date = soup.find('div', class_='date2')
+        date = soup.find('div', class_='time')
 
-        return DateParser.parse(date)
+        return DateParser.parse(self.get_text(date, ''))
 
     def get_html_tags_to_remove(self, soup) -> List[Tag]:
         to_remove = []
+        to_remove.extend(soup.find_all('img'))
+        to_remove.extend(soup.find_all('section', class_='poll'))
+        to_remove.extend(soup.find_all('section', class_='related-articles-wrap'))
+        to_remove.extend(soup.find_all('section', class_='in-article'))
 
         return to_remove
