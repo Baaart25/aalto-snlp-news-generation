@@ -21,3 +21,4 @@ index.hu/szarvas/.*
 index.hu/szerzo/.*
 index.hu/.*/cimkek/
 index.hu/napirajz/.*
+index.hu/politika/belfold/2006/elkurtuk/videok/.*

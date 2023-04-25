@@ -31,7 +31,6 @@ class IndexScraper(ScraperBase):
 
         if not article:
             article = soup.find('div', class_="szoveg")
-
         article_text = self.get_text(article, remove_img=True)
         assert_has_article(article_text, url)
         return article_text
@@ -47,6 +46,8 @@ class IndexScraper(ScraperBase):
         date = self.get_text(date, '')
         if 'Módosítva' in date:
             date = date.split("Módosítva")[0].strip()
+        if not date:
+            date = soup.find('time', class_='t-asd_share-date_date')
 
         return DateParser.parse(self.get_text(date, ''))
 
