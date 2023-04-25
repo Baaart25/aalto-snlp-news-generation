@@ -31,3 +31,7 @@ ac24.cz/tag/.*
 ac24.cz/uvod\?.*
 ac24.cz/.*/\?format=feed&type=rss
 ac24.cz/.*/index.php.*
+parlamentnilisty.cz/profily/.*
+parlamentnilisty.cz/profily\?p=.*
+parlamentnilisty.cz/galerie/.*
+parlamentnilisty.cz/tv/.*
