@@ -1,4 +1,5 @@
 import copy
+import re
 from datetime import datetime
 from typing import Optional, List
 
@@ -13,12 +14,11 @@ class Ac24Scraper(ScraperBase):
     def get_article_text(self, url, soup) -> str:
         article = soup.find('div', class_="post-content")
         if not article:
-            article = soup.find('div', id="ac24_article")
+            article = soup.find('div', id="ac24-article-content")
+        if not article:
+            article = soup.find('div', class_="ac24-article-content")
         if not article:
             article = soup.find('div', class_="component-inner")
-
-        if not article:
-            print(1)
 
         article_text = self.get_text(article, remove_img=True)
         assert_has_article(article_text, url)
@@ -37,8 +37,8 @@ class Ac24Scraper(ScraperBase):
         to_remove.extend(soup.find_all('div', class_='twitter-tweet'))
         to_remove.extend(soup.find_all('div', class_='credits'))
         to_remove.extend(soup.find_all('div', class_='socbuttons'))
-        to_remove.extend(soup.find_all('div', class_='jc'))
-        to_remove.extend(soup.find_all('spann', class_='formInfo'))
+        to_remove.extend(soup.find_all('div', id='jc'))
+        to_remove.extend(soup.find_all('span', class_='formInfo'))
         to_remove.extend(soup.find_all('figure'))
         to_remove.extend(soup.find_all('script'))
 
