@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from typing import Iterator
 
@@ -8,6 +9,11 @@ from aalto_news_gen.data_models.page import Page
 
 
 class WarcIterator:
+    def __init__(self, bad_index_file=None):
+        if bad_index_file:
+            with open(bad_index_file) as f:
+                self.bad_index = re.compile('^{}$'.format('|'.join(
+                    r'(?:(http|https)://(www\.)?{})'.format(line.strip()) for line in f)))
 
     def iter_pages(self, file) -> Iterator[Page]:
         warc_file = warc.open(file)

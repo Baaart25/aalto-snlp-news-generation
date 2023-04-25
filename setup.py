@@ -16,5 +16,14 @@ setup(
         'beautifulsoup4~=4.11.1',
         # 'warc @ https://github.com/erroneousboat/warc3/archive/master.zip',
         'warc3-wet',
+        'quntoken~=3.1.8',
+        'pypandoc~=1.8.1',
+        'PyYAML~=6.0',
+        'Cython',
+        'fasttext',
+        'sentencepiece',
+        'dotmap~=1.3.30',
+        'pandas~=1.4.3',
+        'click~=8.0.4',
     ]
 )
