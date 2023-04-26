@@ -1,0 +1,38 @@
+# model
+tokenizer: bert-base-multilingual-cased
+load_model: False
+model_path: /dir
+
+#data
+train_dir: /home/bart/data/snlp/output/dedup/train
+valid_dir: /home/bart/data/snlp/output/dedup/valid
+test_dir: /home/bart/data/snlp/output/dedup/test
+generate_dir: /home/bart
+
+# preprocess
+do_preprocess: True
+save_tokenized_data: True
+preprocessed_dataset_path: /home/bart/data/snlp/output/preprocessed
+
+# training
+output_dir: /home/bart
+resume_from_checkpoint: False
+
+learning_rate: 0.001
+weight_decay: 0.01
+save_total_limit: 3
+num_train_epochs: 1
+valid_steps: 4000 # same as save_checkpoint_steps
+batch_size: 16
+warmup_steps: 2000
+fp16: True
+
+# predict
+prediction_file: None
+max_predict_length: 128
+num_beams: 5
+length_penalty: 2
+no_repeat_ngram_size: 2
+encoder_no_repeat_ngram_size: 3
+generate_early_stopping: True
+
