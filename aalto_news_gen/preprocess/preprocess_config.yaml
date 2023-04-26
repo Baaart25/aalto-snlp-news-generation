@@ -1,0 +1,17 @@
+lang_detector_model_path: '/tmp/lid.176.bin'
+clean_src_dir: '/dir/data'
+clean_out_dir: '/dir/data/clean'
+min_article_len: 200
+max_article_len: 15000
+min_article_words: 15
+num_process: 16
+
+# deduplication configs
+dedup_src_dir: '/dir/data/clean'
+dedup_out_dir: '/dir/data/dedup'
+char_ngram: 9
+num_of_permutations: 200
+num_bands: 10
+min_jaccard: 0.35
+train_size: 0.8
+valid_size: 0.1
