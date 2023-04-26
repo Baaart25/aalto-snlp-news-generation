@@ -12,7 +12,6 @@ from aalto_news_gen.utils.config_reader import get_config_from_yaml
 class Bert2Bert():
     def __init__(self, config_path):
         self.config = get_config_from_yaml(config_path)
-        self.rouge = load_metric("rouge")
         if self.config.bert2bert.load_model:
             self.model = EncoderDecoderModel.from_pretrained(self.config.bert2bert.model_path)
         else:
