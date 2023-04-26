@@ -9,7 +9,7 @@ from lsh.cache import Cache
 from lsh.minhash import MinHasher
 from pandarallel import pandarallel
 
-from aalto_news_gen.entrypoints.start_scraping import make_dir_if_not_exists
+from os import mkdir
 from aalto_news_gen.utils.config_reader import get_config_from_yaml
 from aalto_news_gen.utils.dateparser import DateParser
 from aalto_news_gen.utils.logger import get_logger
@@ -24,6 +24,8 @@ class Deduplicator:
                                 hashbytes=8,
                                 random_state=3)
         self.lsh = Cache(self.hasher, num_bands=self.config.num_bands)
+
+
 
     def deduplicate(self):
         make_dir_if_not_exists(self.config.dedup_out_dir)
@@ -76,13 +78,11 @@ class Deduplicator:
         duplicates = self.lsh.get_all_duplicates(min_jaccard=self.config.min_jaccard)
 
         for (left, right) in duplicates:
-            left_domain, left_uuid, left_date, left_has_lead = left.split('_')
-            right_domain, right_uuid, right_date, right_has_lead = right.split('_')
+            left_domain, left_uuid, left_date = left.split('_')
+            right_domain, right_uuid, right_date = right.split('_')
 
             # drop the one with empty lead or earlier crawl time
-            drop = (left_domain, left_uuid) if strtobool(left_has_lead) and not strtobool(right_has_lead) \
-                else (right_domain, right_uuid) if strtobool(right_has_lead) and not strtobool(left_has_lead) \
-                else (left_domain, left_uuid) if DateParser.parse(left_date) < DateParser.parse(right_date) \
+            drop = (left_domain, left_uuid) if DateParser.parse(left_date) < DateParser.parse(right_date) \
                 else (right_domain, right_uuid)
             drops[drop[0]].append(drop[1])
 
@@ -92,5 +92,8 @@ class Deduplicator:
         domain = self._get_domain_of_site(df)
         for i in range(len(df)):
             row = df.iloc[i]
-            has_lead = True if df.iloc[i].lead != '' else False
-            self.lsh.add_fingerprint(row.fingerprint, f'{domain}_{row.uuid}_{row.cc_date}_{has_lead}')
+            self.lsh.add_fingerprint(row.fingerprint, f'{domain}_{row.uuid}_{row.cc_date}')
+
+def make_dir_if_not_exists(directory):
+    if not path.exists(directory):
+        mkdir(directory)
