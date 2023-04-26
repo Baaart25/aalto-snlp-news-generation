@@ -9,3 +9,6 @@ pyyaml~=6.0
 dotmap~=1.3.30
 pypandoc~=1.8.1
 click~=8.0.4
+dateparser~=1.1.8
+pandarallel~=1.6.4
+tqdm~=4.65.0
