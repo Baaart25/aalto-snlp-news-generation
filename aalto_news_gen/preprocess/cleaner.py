@@ -54,6 +54,7 @@ class ArticleCleaner:
                                             axis=1)
         df_site = df_site[(df_site['language'] == 'hu') | (df_site['language'] == 'cs') | (df_site['language'] == 'sk')]
         logger.info(f'Dropped non-Hungarian and non-Czech sentences, size: {len(df_site)}')
+        df_site = df_site.drop(columns=['language', 'article_word_cnt'])
 
         make_dir_if_not_exists(self.config.clean_out_dir)
         domain = self._get_domain_of_site(df_site)
