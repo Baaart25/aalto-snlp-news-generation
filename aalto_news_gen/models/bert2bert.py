@@ -2,6 +2,7 @@ import glob
 import os
 
 import pandas as pd
+import yaml
 from datasets import Dataset, load_metric, DatasetDict
 from transformers import EncoderDecoderModel, BertTokenizer, pipeline
 from transformers import IntervalStrategy, Seq2SeqTrainingArguments, Seq2SeqTrainer
@@ -11,15 +12,17 @@ from aalto_news_gen.utils.config_reader import get_config_from_yaml
 
 class Bert2Bert():
     def __init__(self, config_path):
-        self.config = get_config_from_yaml(config_path)
-        if self.config.bert2bert.load_model:
-            self.model = EncoderDecoderModel.from_pretrained(self.config.bert2bert.model_path)
+        with open(config_path, 'r') as config_file:
+            self.config = yaml.load(config_file, Loader=yaml.FullLoader)
+
+        if self.config['load_model']:
+            self.model = EncoderDecoderModel.from_pretrained(self.config['model_path'])
         else:
             self.model = EncoderDecoderModel.from_encoder_decoder_pretrained(
-                self.config.bert2bert.tokenizer, self.config.bert2bert.tokenizer
+                self.config['tokenizer'], self.config['tokenizer']
             )
 
-        self.tokenizer = BertTokenizer.from_pretrained(self.config.bert2bert.tokenizer)
+        self.tokenizer = BertTokenizer.from_pretrained(self.config['tokenizer'])
 
         self.model.config.decoder_start_token_id = self.tokenizer.cls_token_id
         self.model.config.pad_token_id = self.tokenizer.pad_token_id
@@ -31,7 +34,7 @@ class Bert2Bert():
         site_dfs = []
         for file in files:
             site_df = pd.read_json(file, lines=True)
-            site_df = site_df[['lead', 'article', 'uuid']]
+            site_df = site_df[['article', 'uuid']]
             site_df = site_df.dropna()
             site_df = site_df.astype('str')
             site_dfs.append(site_df)
@@ -43,7 +46,7 @@ class Bert2Bert():
     def process_data_to_model_inputs(self, batch):
         # Tokenize the input and target data
         inputs = self.tokenizer(batch['article'], padding='max_length', truncation=True, max_length=512)
-        outputs = self.tokenizer(batch['lead'], padding='max_length', truncation=True, max_length=512)
+        outputs = self.tokenizer(batch['article'], padding='max_length', truncation=True, max_length=512)
 
         batch['input_ids'] = inputs.input_ids
         batch['attention_mask'] = inputs.attention_mask
@@ -61,35 +64,35 @@ class Bert2Bert():
 
     def _get_seq2seq_training_args(self):
         return Seq2SeqTrainingArguments(
-            output_dir=self.config.output_dir,
-            learning_rate=self.config.learning_rate,
-            num_train_epochs=self.config.num_train_epochs,
-            per_device_train_batch_size=self.config.batch_size,
-            per_device_eval_batch_size=self.config.batch_size,
+            output_dir=self.config['output_dir'],
+            learning_rate=self.config['learning_rate'],
+            num_train_epochs=self.config['num_train_epochs'],
+            per_device_train_batch_size=self.config['batch_size'],
+            per_device_eval_batch_size=self.config['batch_size'],
             evaluation_strategy=IntervalStrategy.STEPS,
-            weight_decay=self.config.weight_decay,
-            save_total_limit=self.config.save_total_limit,
-            eval_steps=self.config.valid_steps,
-            save_steps=self.config.valid_steps,
+            weight_decay=self.config['weight_decay'],
+            save_total_limit=self.config['save_total_limit'],
+            eval_steps=self.config['valid_steps'],
+            save_steps=self.config['valid_steps'],
             predict_with_generate=True,
-            generation_max_length=self.config.max_predict_length,
-            generation_num_beams=self.config.num_beams,
-            warmup_steps=self.config.warmup_steps,
+            generation_max_length=self.config['max_predict_length'],
+            generation_num_beams=self.config['num_beams'],
+            warmup_steps=self.config['warmup_steps'],
             load_best_model_at_end=True,
-            fp16=self.config.fp16,
+            fp16=self.config['fp16'],
         )
 
     def _load_tokenized_dataset(self):
-        if self.config.do_preprocess:
+        if self.config['do_preprocess']:
             raw_datasets = DatasetDict()
-            raw_datasets['train'] = self.load_dataset(self.config.train_dir)
-            raw_datasets['validation'] = self.load_dataset(self.config.valid_dir)
-            raw_datasets['test'] = self.load_dataset(self.config.test_dir, shuffle=False)
+            raw_datasets['train'] = self.load_dataset(self.config['train_dir'])
+            raw_datasets['validation'] = self.load_dataset(self.config['valid_dir'])
+            raw_datasets['test'] = self.load_dataset(self.config['test_dir'], shuffle=False)
             tokenized_datasets = self.tokenize_datasets(raw_datasets)
-            if self.config.save_tokenized_data:
-                tokenized_datasets.save_to_disk(self.config.preprocessed_dataset_path)
+            if self.config['save_tokenized_data']:
+                tokenized_datasets.save_to_disk(self.config['preprocessed_dataset_path'])
         else:
-            tokenized_datasets = DatasetDict.load_from_disk(self.config.preprocessed_dataset_path)
+            tokenized_datasets = DatasetDict.load_from_disk(self.config['preprocessed_dataset_path'])
         return tokenized_datasets
 
 
@@ -105,47 +108,31 @@ class Bert2Bert():
         tokenized_datasets = self._load_tokenized_dataset()
 
         trainer = self.get_seq2seq_trainer(tokenized_datasets, load_train_data=True)
-        #trainer.compute_metrics = self.compute_metrics
 
         # Training
-        checkpoint = self.config.resume_from_checkpoint if self.config.resume_from_checkpoint else None
+        checkpoint = self.config['resume_from_checkpoint'] if self.config['resume_from_checkpoint'] else None
         train_output = trainer.train(resume_from_checkpoint=checkpoint)
-        #metrics = train_output.metrics
-        trainer.save_model(os.path.join(self.config.output_dir, 'best_model'))
-        #trainer.save_metrics("train", metrics)
+        trainer.save_model(os.path.join(self.config['output_dir'], 'best_model'))
 
-        trainer.compute_metrics = self.compute_metrics
         # Evaluation
         metrics = trainer.evaluate(
             metric_key_prefix="eval",
-            max_length=self.config.max_predict_length,
-            num_beams=self.config.num_beams,
-            length_penalty=self.config.length_penalty,
-            no_repeat_ngram_size=self.config.no_repeat_ngram_size,
-            encoder_no_repeat_ngram_size=self.config.encoder_no_repeat_ngram_size,
-            early_stopping=self.config.generate_early_stopping,
+            max_length=self.config['max_predict_length'],
+            num_beams=self.config['num_beams'],
+            length_penalty=self.config['length_penalty'],
+            no_repeat_ngram_size=self.config['no_repeat_ngram_size'],
+            encoder_no_repeat_ngram_size=self.config['encoder_no_repeat_ngram_size'],
+            early_stopping=self.config['generate_early_stopping'],
         )
         trainer.save_metrics("eval", metrics)
-
-        # Prediction
-        self._generate_and_save(trainer, tokenized_datasets)
-
-    def generate(self):
-        raw_datasets = DatasetDict()
-        raw_datasets['test'] = self.load_dataset(self.config.generate_dir, shuffle=False)
-        tokenized_datasets = self.tokenize_datasets(raw_datasets)
-
-        trainer = self.get_seq2seq_trainer(tokenized_datasets, load_train_data=False)
-        trainer.compute_metrics = self.compute_metrics
-        self._generate_and_save(trainer, tokenized_datasets)
 
     def predict_pipeline(self, text):
         nlp = pipeline(model=self.model, tokenizer=self.tokenizer)
         return nlp(text,
-                   max_length=self.config.max_predict_length,
-                   num_beams=self.config.num_beams,
-                   length_penalty=self.config.length_penalty,
-                   no_repeat_ngram_size=self.config.no_repeat_ngram_size,
-                   encoder_no_repeat_ngram_size=self.config.encoder_no_repeat_ngram_size,
-                   early_stopping=self.config.generate_early_stopping,
+                   max_length=self.config['max_predict_length'],
+                   num_beams=self.config['num_beams'],
+                   length_penalty=self.config['length_penalty'],
+                   no_repeat_ngram_size=self.config['no_repeat_ngram_size'],
+                   encoder_no_repeat_ngram_size=self.config['encoder_no_repeat_ngram_size'],
+                   early_stopping=self.config['generate_early_stopping'],
                    )
