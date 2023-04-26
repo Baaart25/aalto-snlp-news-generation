@@ -25,5 +25,8 @@ setup(
         'dotmap~=1.3.30',
         'pandas~=1.4.3',
         'click~=8.0.4',
+        'matplotlib~=3.5.1',
+        'seaborn~=0.11.2',
+        'jupyter~=1.0.0',
     ]
 )
