@@ -144,7 +144,7 @@ class Bert2Bert():
 
     def generate(self):
         raw_datasets = DatasetDict()
-        raw_datasets['test'] = self.load_dataset(self.config.generate_dir, shuffle=False)
+        raw_datasets['test'] = self.load_dataset(self.config['generate_dir'], shuffle=False)
         tokenized_datasets = self.tokenize_datasets(raw_datasets)
 
         trainer = Seq2SeqTrainer(
