@@ -3,11 +3,10 @@ import os
 
 import pandas as pd
 import yaml
-from datasets import Dataset, load_metric, DatasetDict
+from datasets import Dataset, DatasetDict
 from transformers import EncoderDecoderModel, BertTokenizer, pipeline
 from transformers import IntervalStrategy, Seq2SeqTrainingArguments, Seq2SeqTrainer
 
-from aalto_news_gen.utils.config_reader import get_config_from_yaml
 
 
 class Bert2Bert():
@@ -19,7 +18,7 @@ class Bert2Bert():
             self.model = EncoderDecoderModel.from_pretrained(self.config['model_path'])
         else:
             self.model = EncoderDecoderModel.from_encoder_decoder_pretrained(
-                self.config['tokenizer'], self.config['tokenizer']
+                self.config['tokenizer'], self.config['tokenizer'], tie_encoder_decoder=True
             )
 
         self.tokenizer = BertTokenizer.from_pretrained(self.config['tokenizer'])
@@ -28,13 +27,19 @@ class Bert2Bert():
         self.model.config.pad_token_id = self.tokenizer.pad_token_id
         self.model.config.eos_token_id = self.tokenizer.sep_token_id
         self.model.config.vocab_size = self.model.config.encoder.vocab_size
+        self.model.config.max_length = 512
+        self.model.config.early_stopping = True
+        self.model.config.no_repeat_ngram_size = 1
+        self.model.config.length_penalty = 2.0
+        self.model.config.repetition_penalty = 3.0
+        self.model.config.num_beams = 10
 
     def load_dataset(self, data_dir, shuffle=True):
         files = [data_dir] if os.path.isfile(data_dir) else sorted(glob.glob(f'{data_dir}/*.jsonl.gz'))
         site_dfs = []
         for file in files:
             site_df = pd.read_json(file, lines=True)
-            site_df = site_df[['article', 'uuid']]
+            site_df = site_df[['input', 'article', 'uuid']]
             site_df = site_df.dropna()
             site_df = site_df.astype('str')
             site_dfs.append(site_df)
@@ -60,7 +65,7 @@ class Bert2Bert():
         return batch
 
     def tokenize_datasets(self, raw_datasets):
-        return raw_datasets.map(self.process_data_to_model_inputs, batched=True, remove_columns=['article'])
+        return raw_datasets.map(self.process_data_to_model_inputs, batched=True, remove_columns=['input','article'])
 
     def _get_seq2seq_training_args(self):
         return Seq2SeqTrainingArguments(
@@ -127,8 +132,6 @@ class Bert2Bert():
         trainer.save_metrics("eval", metrics)
 
     def predict_pipeline(self, text):
-        self.generate_summary_beam_search(text)
-        return
         nlp = pipeline(task='text-generation', model=self.model, tokenizer=self.tokenizer)
         return nlp(text,
                    max_length=self.config['max_predict_length'],
@@ -139,19 +142,41 @@ class Bert2Bert():
                    early_stopping=self.config['generate_early_stopping'],
                    )
 
-    def generate_summary_beam_search(self, text):
-        inputs = self.tokenizer(text, padding="max_length", truncation=True, max_length=512,return_tensors="pt")
-        input_ids = inputs.input_ids.to("cuda")
-        attention_mask = inputs.attention_mask.to("cuda")
+    def generate(self):
+        raw_datasets = DatasetDict()
+        raw_datasets['test'] = self.load_dataset(self.config.generate_dir, shuffle=False)
+        tokenized_datasets = self.tokenize_datasets(raw_datasets)
 
-        outputs = self.model.generate(input_ids, attention_mask=attention_mask,
-                                          num_beams=15,
-                                          repetition_penalty=3.0,
-                                          length_penalty=2.0,
-                                          num_return_sequences=1
-                                          )
+        trainer = Seq2SeqTrainer(
+            model=self.model,
+            args=self._get_seq2seq_training_args(),
+        )
 
-        # all special tokens including will be removed
-        output_str = self.tokenizer.decode(outputs, skip_special_tokens=True)
+        test_output = trainer.predict(
+            test_dataset=tokenized_datasets["test"],
+            metric_key_prefix="test",
+            max_length=self.config['max_predict_length'],
+            num_beams=self.config['num_beams'],
+            length_penalty=self.config['length_penalty'],
+            no_repeat_ngram_size=self.config['no_repeat_ngram_size'],
+            encoder_no_repeat_ngram_size=self.config['encoder_no_repeat_ngram_size'],
+            early_stopping=self.config['generate_early_stopping'],
+        )
 
-        print(output_str)
+        predictions = test_output.predictions
+        predictions[predictions == -100] = self.tokenizer.pad_token_id
+        test_preds = self.tokenizer.batch_decode(
+            predictions, skip_special_tokens=True, clean_up_tokenization_spaces=True
+        )
+        test_preds = list(map(str.strip, test_preds))
+
+        test_df = tokenized_datasets['test'].to_pandas()
+        test_df['generated'] = test_preds
+        test_df = test_df[['generated', 'uuid']]
+        for i in range(len(test_df)):
+            print(test_df.iloc[i]['generated'])
+
+        output_file = os.path.join(self.config['output_dir'], self.config['prediction_file'])
+
+        with open(output_file, 'w', encoding='utf-8') as file:
+            test_df.to_json(file, force_ascii=False, lines=True, orient='records')
