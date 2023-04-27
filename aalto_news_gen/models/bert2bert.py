@@ -127,6 +127,8 @@ class Bert2Bert():
         trainer.save_metrics("eval", metrics)
 
     def predict_pipeline(self, text):
+        self.generate_summary_beam_search(text)
+        return
         nlp = pipeline(task='text-generation', model=self.model, tokenizer=self.tokenizer)
         return nlp(text,
                    max_length=self.config['max_predict_length'],
@@ -136,3 +138,20 @@ class Bert2Bert():
                    encoder_no_repeat_ngram_size=self.config['encoder_no_repeat_ngram_size'],
                    early_stopping=self.config['generate_early_stopping'],
                    )
+
+    def generate_summary_beam_search(self, text):
+        inputs = self.tokenizer(text, padding="max_length", truncation=True, max_length=512,return_tensors="pt")
+        input_ids = inputs.input_ids.to("cuda")
+        attention_mask = inputs.attention_mask.to("cuda")
+
+        outputs = self.model.generate(input_ids, attention_mask=attention_mask,
+                                          num_beams=15,
+                                          repetition_penalty=3.0,
+                                          length_penalty=2.0,
+                                          num_return_sequences=1
+                                          )
+
+        # all special tokens including will be removed
+        output_str = self.tokenizer.decode(outputs, skip_special_tokens=True)
+
+        print(output_str)
