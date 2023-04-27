@@ -146,10 +146,14 @@ class Bert2Bert():
         raw_datasets = DatasetDict()
         raw_datasets['test'] = self.load_dataset(self.config['generate_dir'], shuffle=False)
         tokenized_datasets = self.tokenize_datasets(raw_datasets)
-
+        seq2seq_args = Seq2SeqTrainingArguments(
+            output_dir=self.config['output_dir'],
+            generation_max_length=self.config['max_predict_length'],
+            generation_num_beams=self.config['num_beams'],
+        )
         trainer = Seq2SeqTrainer(
             model=self.model,
-            args=self._get_seq2seq_training_args(),
+            args=seq2seq_args,
         )
 
         test_output = trainer.predict(
