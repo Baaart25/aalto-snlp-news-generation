@@ -45,7 +45,7 @@ class Bert2Bert():
 
     def process_data_to_model_inputs(self, batch):
         # Tokenize the input and target data
-        inputs = self.tokenizer(batch['article'], padding='max_length', truncation=True, max_length=512)
+        inputs = self.tokenizer(batch['input'], padding='max_length', truncation=True, max_length=512)
         outputs = self.tokenizer(batch['article'], padding='max_length', truncation=True, max_length=512)
 
         batch['input_ids'] = inputs.input_ids
