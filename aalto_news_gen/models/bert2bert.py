@@ -127,7 +127,7 @@ class Bert2Bert():
         trainer.save_metrics("eval", metrics)
 
     def predict_pipeline(self, text):
-        nlp = pipeline(model=self.model, tokenizer=self.tokenizer)
+        nlp = pipeline(task='text-generation', model=self.model, tokenizer=self.tokenizer)
         return nlp(text,
                    max_length=self.config['max_predict_length'],
                    num_beams=self.config['num_beams'],
