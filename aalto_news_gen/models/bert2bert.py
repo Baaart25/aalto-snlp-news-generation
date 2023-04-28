@@ -49,6 +49,17 @@ class Bert2Bert():
             df = df.sample(frac=1, random_state=123)
         return Dataset.from_pandas(df)
 
+    def load_dataframe(self, data_dir):
+        files = [data_dir] if os.path.isfile(data_dir) else sorted(glob.glob(f'{data_dir}/*.jsonl.gz'))
+        site_dfs = []
+        for file in files:
+            site_df = pd.read_json(file, lines=True)
+            site_df = site_df[['input', 'article', 'uuid']]
+            site_df = site_df.dropna()
+            site_df = site_df.astype('str')
+            site_dfs.append(site_df)
+        return pd.concat(site_dfs)
+
     def process_data_to_model_inputs(self, batch):
         # Tokenize the input and target data
         inputs = self.tokenizer(batch['input'], padding='max_length', truncation=True, max_length=512)
@@ -181,6 +192,13 @@ class Bert2Bert():
         output_str = self.tokenizer.batch_decode(outputs,skip_special_tokens=True)
 
         print(output_str)
+
+    def predict_pipeline(self, text):
+        nlp = pipeline(task='text-generation', model=self.model, tokenizer=self.tokenizer)
+        df = self.load_dataframe(self.config['generate_dir'])
+        df['generated'] = df.apply(lambda x: self.asd(nlp, df['input']), axis=1)
+        out_dir = self.config['output_dir']
+        df.to_json(f'{out_dir}/generated.jsonl.gz', orient='records', lines=True, compression='gzip')
 
     def generate(self):
         raw_datasets = DatasetDict()
