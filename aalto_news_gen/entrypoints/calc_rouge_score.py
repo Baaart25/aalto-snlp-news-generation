@@ -8,24 +8,13 @@ import pandas as pd
 
 
 @click.command()
-@click.argument('references')  # path to original json file(s)
-@click.argument('predicted')  # path to predicted json file
+@click.argument('generated_file')  # path to the json file
 @click.argument('results_file')
-def main(references, predicted, results_file):
+def main(generated_file, results_file):
     rouge = datasets.load_metric("rouge")
     # rouge = evaluate.load("rouge")
 
-    files = [references] if os.path.isfile(references) else sorted(glob.glob(f'{references}/*.jsonl.gz'))
-    site_dfs = []
-    for file in files:
-        site_df = pd.read_json(file, lines=True)
-        site_df = site_df[['article', 'uuid']]
-        site_df = site_df.astype('str')
-        site_dfs.append(site_df)
-    ref_df = pd.concat(site_dfs)
-    pred_df = pd.read_json(predicted, lines=True)
-
-    df = pd.merge(ref_df, pred_df, on='uuid')
+    df = pd.read_json(generated_file, lines=True)
 
     ref = df['article'].tolist()
     gen = df['generated'].tolist()
