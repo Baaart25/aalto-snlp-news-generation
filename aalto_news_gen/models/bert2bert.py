@@ -1,4 +1,5 @@
 import glob
+import numpy as np
 import os
 
 import pandas as pd
@@ -131,16 +132,55 @@ class Bert2Bert():
         )
         trainer.save_metrics("eval", metrics)
 
-    def predict_pipeline(self, text):
-        nlp = pipeline(task='text-generation', model=self.model, tokenizer=self.tokenizer)
+    def asd(self, nlp, text):
         return nlp(text,
-                   max_length=self.config['max_predict_length'],
-                   num_beams=self.config['num_beams'],
-                   length_penalty=self.config['length_penalty'],
-                   no_repeat_ngram_size=self.config['no_repeat_ngram_size'],
-                   encoder_no_repeat_ngram_size=self.config['encoder_no_repeat_ngram_size'],
-                   early_stopping=self.config['generate_early_stopping'],
-                   )
+            max_length=self.config['max_predict_length'],
+            num_beams=self.config['num_beams'],
+            length_penalty=self.config['length_penalty'],
+            no_repeat_ngram_size=self.config['no_repeat_ngram_size'],
+            encoder_no_repeat_ngram_size=self.config['encoder_no_repeat_ngram_size'],
+            early_stopping=self.config['generate_early_stopping']
+
+    def predict_pipeline(self, text):
+        files = [data_dir] if os.path.isfile(data_dir) else sorted(glob.glob(f'{data_dir}/*.jsonl.gz'))
+        site_dfs = []
+        for file in files:
+            site_df = pd.read_json(file, lines=True)
+            site_df = site_df[['input', 'article', 'uuid']]
+            site_df = site_df.dropna()
+            site_df = site_df.astype('str')
+            site_dfs.append(site_df)
+        df = pd.concat(site_dfs)
+        nlp = pipeline(task='text-generation', model=self.model,
+                       tokenizer=self.tokenizer)
+        df['generated'] = df.apply(lambda x: self.asd(nlp, df['input']), axis=1)
+        df.to_json(f'{self.config['output_dir']}/output.jsonl.gz', orient='records', lines=True,
+                                                compression='gzip')
+        #nlp = pipeline(task='text-generation', model=self.model, tokenizer=self.tokenizer)
+        #output = nlp(text,
+        #           max_length=self.config['max_predict_length'],
+        #           num_beams=self.config['num_beams'],
+        #           length_penalty=self.config['length_penalty'],
+        #           no_repeat_ngram_size=self.config['no_repeat_ngram_size'],
+        #           encoder_no_repeat_ngram_size=self.config['encoder_no_repeat_ngram_size'],
+        #           early_stopping=self.config['generate_early_stopping'],
+        #           )
+        #return output
+
+    def generate_summary_beam_search(self, text):
+        inputs = self.tokenizer(text, truncation=True, max_length=512,return_tensors="pt")
+        input_ids = inputs.input_ids
+        attention_mask = inputs.attention_mask
+
+        outputs = self.model.generate(input_ids,
+                                      attention_mask=attention_mask,
+                                      num_beams=5,
+                                      length_penalty=2.0,
+                                      num_return_sequences=1)
+
+        output_str = self.tokenizer.batch_decode(outputs,skip_special_tokens=True)
+
+        print(output_str)
 
     def generate(self):
         raw_datasets = DatasetDict()
@@ -150,6 +190,7 @@ class Bert2Bert():
             output_dir=self.config['output_dir'],
             generation_max_length=self.config['max_predict_length'],
             generation_num_beams=self.config['num_beams'],
+            per_device_eval_batch_size=5
         )
         trainer = Seq2SeqTrainer(
             model=self.model,
@@ -157,7 +198,7 @@ class Bert2Bert():
         )
 
         test_output = trainer.predict(
-            test_dataset=tokenized_datasets["test"],
+            test_dataset=tokenized_datasets['test'],
             metric_key_prefix="test",
             max_length=self.config['max_predict_length'],
             num_beams=self.config['num_beams'],
@@ -168,6 +209,7 @@ class Bert2Bert():
         )
 
         predictions = test_output.predictions
+        print(predictions)
         predictions[predictions == -100] = self.tokenizer.pad_token_id
         test_preds = self.tokenizer.batch_decode(
             predictions, skip_special_tokens=True, clean_up_tokenization_spaces=True
