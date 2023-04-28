@@ -33,7 +33,7 @@ def main(references, predicted, results_file):
     rouge_output = rouge.compute(
         predictions=gen, references=ref, rouge_types=["rouge1", "rouge2", "rougeL"]
     )
-    
+
     rouge1 = rouge_output["rouge1"].mid
     rouge2 = rouge_output["rouge2"].mid
     rougeL = rouge_output["rougeL"].mid
