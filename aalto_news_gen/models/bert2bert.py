@@ -8,7 +8,6 @@ from transformers import EncoderDecoderModel, BertTokenizer, pipeline
 from transformers import IntervalStrategy, Seq2SeqTrainingArguments, Seq2SeqTrainer
 
 
-
 class Bert2Bert():
     def __init__(self, config_path):
         with open(config_path, 'r') as config_file:
@@ -76,7 +75,7 @@ class Bert2Bert():
         return batch
 
     def tokenize_datasets(self, raw_datasets):
-        return raw_datasets.map(self.process_data_to_model_inputs, batched=True, remove_columns=['input','article'])
+        return raw_datasets.map(self.process_data_to_model_inputs, batched=True, remove_columns=['input', 'article'])
 
     def _get_seq2seq_training_args(self):
         return Seq2SeqTrainingArguments(
@@ -110,7 +109,6 @@ class Bert2Bert():
         else:
             tokenized_datasets = DatasetDict.load_from_disk(self.config['preprocessed_dataset_path'])
         return tokenized_datasets
-
 
     def get_seq2seq_trainer(self, tokenized_datasets, load_train_data=True) -> Seq2SeqTrainer:
         return Seq2SeqTrainer(
@@ -151,7 +149,7 @@ class Bert2Bert():
                    encoder_no_repeat_ngram_size=self.config['encoder_no_repeat_ngram_size'],
                    early_stopping=self.config['generate_early_stopping'],
                    )
-
+    
     def predict_pipeline(self, text):
         nlp = pipeline(task='text-generation', model=self.model, tokenizer=self.tokenizer)
         df = self.load_dataframe(self.config['generate_dir'])
